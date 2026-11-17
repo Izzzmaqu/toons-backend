@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Toons.Api/Toons.Api.csproj" />
+  <Project Path="Toons.Application/Toons.Application.csproj" />
+  <Project Path="Toons.Domain/Toons.Domain.csproj" />
+  <Project Path="Toons.Infrastructure/Toons.Infrastructure.csproj" />
+  <Project Path="Toons.Tests/Toons.Tests.csproj" />
+</Solution>
