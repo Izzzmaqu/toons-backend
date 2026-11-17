@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  construir-y-probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Compilar
+        run: dotnet build Toons.slnx --configuration Release
+
+      - name: Probar
+        run: dotnet test Toons.slnx --configuration Release --no-build
