@@ -5,38 +5,84 @@ El frontend vive en otro repositorio: `toons-web`.
 
 ## Requisitos
 
-- **SDK de .NET 10** (`global.json` fija la versión 10.0.100 y permite subir de versión de características). Compruébalo con `dotnet --version`. Si no lo tienes, instálalo desde https://dotnet.microsoft.com/download/dotnet/10.0 o, sin tocar tu instalación, con el script oficial en una carpeta fuera del repositorio:
+| Herramienta | Versión | Cómo comprobarla |
+|---|---|---|
+| SDK de .NET | 10.0.100 o superior de la serie 10 (`global.json` lo exige) | `dotnet --version` |
+| Docker Desktop | cualquiera reciente (o un PostgreSQL 16 ya instalado) | `docker --version` |
+| Git | cualquiera reciente | `git --version` |
 
-  ```
-  Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
-  .\dotnet-install.ps1 -Channel 10.0 -InstallDir C:\sdk-dotnet10
-  $env:PATH = "C:\sdk-dotnet10;$env:PATH"
-  ```
+Descarga el SDK de .NET 10 desde https://dotnet.microsoft.com/download/dotnet/10.0. Si prefieres no tocar tu instalación, puedes bajarlo a una carpeta aparte con el script oficial:
 
-- Docker (para PostgreSQL) o un PostgreSQL ya instalado.
-- `Toons.slnx` abre con Visual Studio 2022 17.13 o superior (o VS 2026) y con VS Code + C# Dev Kit. Si a alguien no le abre, `dotnet sln Toons.slnx migrate` genera un `.sln` clásico.
+```powershell
+Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
+.\dotnet-install.ps1 -Channel 10.0 -InstallDir C:\sdk-dotnet10
+$env:PATH = "C:\sdk-dotnet10;$env:PATH"
+```
 
-## Paso a paso
+(El cambio de `PATH` vale solo para esa ventana de PowerShell.)
 
-1. Levanta PostgreSQL (puerto 5433 del equipo, base `toons`):
+## Paso a paso desde cero (PowerShell)
 
+1. Consigue el código y entra a la carpeta:
+
+   ```powershell
+   git clone <URL-del-repositorio-toons-backend>
+   cd toons-backend
+   dotnet --version
    ```
+
+   `dotnet --version` debe mostrar 10.0.x. Si muestra otra versión o un error de "SDK not found", instala el SDK 10 (ver Requisitos).
+
+2. Levanta PostgreSQL con Docker (puerto 5433 del equipo, base `toons`; usuario y contraseña ficticios de solo desarrollo):
+
+   ```powershell
    docker compose up -d
+   docker compose ps
    ```
 
-   **Con un PostgreSQL ya instalado** (sin Docker): crea una base `toons` y un usuario con permisos sobre ella, y cambia `ConnectionStrings:Toons` en `Toons.Api/appsettings.Development.json` (o con la variable de entorno `ConnectionStrings__Toons`, ver `.env.example`), por ejemplo `Host=localhost;Port=5432;Database=toons;Username=tu_usuario;Password=tu_clave`.
+   `docker compose ps` debe mostrar `toons-postgres` en estado `running`.
 
-2. Ejecuta la API (queda en http://localhost:5080). En Development aplica las migraciones y siembra los datos de ejemplo al arrancar:
+   **Con un PostgreSQL ya instalado** (sin Docker): crea una base `toons` y un usuario con permisos sobre ella, y define la cadena de conexión antes de ejecutar la API:
 
+   ```powershell
+   $env:ConnectionStrings__Toons = "Host=localhost;Port=5432;Database=toons;Username=tu_usuario;Password=tu_clave"
    ```
+
+   (También puedes editar `ConnectionStrings:Toons` en `Toons.Api/appsettings.Development.json`. `.env.example` muestra el formato.)
+
+3. Ejecuta la API (queda en http://localhost:5080). En Development crea las tablas y los datos de ejemplo al arrancar:
+
+   ```powershell
    dotnet run --project Toons.Api
    ```
 
-3. Ejecuta las pruebas (no necesitan PostgreSQL: usan SQLite en memoria):
+   Deja esa ventana abierta; con `Ctrl+C` se detiene.
 
-   ```
+4. En otra ventana, ejecuta las pruebas (no necesitan PostgreSQL: usan SQLite en memoria):
+
+   ```powershell
    dotnet test Toons.slnx
    ```
+
+5. Para el sitio web, sigue el README de `toons-web`.
+
+Para apagar PostgreSQL: `docker compose down` (conserva los datos) o `docker compose down -v` (los borra).
+
+## Si `Toons.slnx` no abre
+
+`Toons.slnx` abre con Visual Studio 2022 17.13 o superior, Visual Studio 2026, y con VS Code + la extensión C# Dev Kit. Si tu editor no lo abre, genera una solución clásica con:
+
+```powershell
+dotnet sln Toons.slnx migrate
+```
+
+Eso crea `Toons.sln` (no la subas al repositorio).
+
+## Si algo falla
+
+- **El puerto 5433 o 5080 está ocupado:** apaga lo que lo usa o cambia el puerto en `docker-compose.yml` (y en la cadena de conexión) o en `Toons.Api/Properties/launchSettings.json`.
+- **La API no arranca por no conectar a la base:** comprueba `docker compose ps` y que la cadena de conexión coincida.
+- **La API dice que falta configuración (`Jwt`):** fuera de Development la clave JWT es obligatoria; ejecuta con `dotnet run --project Toons.Api` (modo Development por defecto) o define `Jwt__Clave` con un valor de al menos 32 caracteres.
 
 ## Usuarios de ejemplo (ficticios, solo desarrollo)
 
@@ -56,6 +102,7 @@ Toons.Infrastructure  EF Core (contexto, configuraciones, migraciones), reposito
 Toons.Api             Controladores delgados y composición de dependencias. Compone todas las capas.
 Toons.Tests           Pruebas (xUnit, SQLite en memoria y pruebas de arquitectura con NetArchTest).
 docs/modelo-datos.md  Diagrama de las 12 tablas.
+docs/arquitectura.md  Capas y flujo del login.
 ```
 
 La regla de dependencias la hacen cumplir las pruebas de `Toons.Tests/Arquitectura`.
@@ -69,7 +116,8 @@ El backend nunca devuelve mensajes de texto: solo códigos con el formato `modul
 - **Cuenta bloqueada (423):** tras 5 intentos fallidos la cuenta se bloquea 5 minutos (`Bloqueo` en `appsettings.json`). Mientras esté bloqueada se responde `auth.cuenta_bloqueada` aunque la contraseña sea correcta. Esto **revela que el correo existe**; se aceptó a propósito porque la persona legítima necesita saber por qué no puede entrar. Cualquier otro fallo devuelve el mismo `auth.credenciales_invalidas`, exista o no el correo.
 - **Tiempo de respuesta:** para un correo inexistente se verifica la contraseña contra un hash ficticio, así el tiempo no delata si el correo existe.
 - **Intentos en paralelo (limitación conocida):** el contador se lee, se suma y se guarda en el mismo registro. Con muchas peticiones simultáneas contra la misma cuenta pueden perderse incrementos y permitirse algo más de 5 intentos. Un incremento atómico exigiría traducir las reglas del dominio a SQL, lo que se descartó por complejidad.
-- Los valores de `appsettings.Development.json` (`SOLO-DESARROLLO-CAMBIAR`) son ficticios y solo sirven en desarrollo. Fuera de Development la API no arranca si falta la clave JWT.
+- Los valores de `appsettings.Development.json` (`SOLO-DESARROLLO-CAMBIAR`) son ficticios y solo sirven en desarrollo.
+- El login busca el correo en minúsculas: los usuarios nuevos deben guardarse con el correo en minúsculas.
 
 ## Para Persona 2: el modelo de datos
 
@@ -82,7 +130,7 @@ El modelo (`docs/modelo-datos.md`) es una **propuesta de Persona 3, revisada por
 3. Copia una configuración de `Toons.Infrastructure/Persistencia/Configuraciones/` (por ejemplo `CapituloConfiguracion.cs`) y adáptala: nombre de tabla, longitudes, únicos, claves foráneas y comportamiento al borrar (`Restrict` salvo tablas puente, páginas y capítulos). Se aplican solas.
 4. Crea la migración (la primera vez, `dotnet tool restore`):
 
-   ```
+   ```powershell
    dotnet tool restore
    dotnet tool run dotnet-ef migrations add NombreDeLaMigracion --project Toons.Infrastructure --startup-project Toons.Api
    ```
@@ -91,7 +139,7 @@ El modelo (`docs/modelo-datos.md`) es una **propuesta de Persona 3, revisada por
 
 **Reiniciar la base de desarrollo** (borra todo y vuelve a sembrar los datos de ejemplo):
 
-```
+```powershell
 docker compose down -v
 docker compose up -d
 dotnet run --project Toons.Api
@@ -101,7 +149,7 @@ dotnet run --project Toons.Api
 
 Las tablas están descritas en `docs/modelo-datos.md`. Para consultarlas con `psql` dentro del contenedor de Docker:
 
-```
+```powershell
 docker compose exec postgres psql -U toons_dev -d toons
 ```
 
