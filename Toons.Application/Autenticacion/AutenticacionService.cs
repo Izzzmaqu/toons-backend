@@ -30,7 +30,7 @@ public sealed class AutenticacionService(
             return Resultado<LoginRespuesta>.Fallo(CodigosError.CredencialesInvalidas);
         }
 
-        var ahora = reloj.GetUtcNow();
+        var ahora = reloj.GetUtcNow().UtcDateTime;
         if (usuario.EstaBloqueado(ahora))
         {
             return Resultado<LoginRespuesta>.Fallo(CodigosError.CuentaBloqueada);
@@ -48,7 +48,7 @@ public sealed class AutenticacionService(
     }
 
     private async Task<Resultado<LoginRespuesta>> RechazarPorContrasenaIncorrectaAsync(
-        Usuario usuario, DateTimeOffset ahora, CancellationToken cancelacion)
+        Usuario usuario, DateTime ahora, CancellationToken cancelacion)
     {
         var opciones = bloqueo.Value;
         usuario.RegistrarIntentoFallido(ahora, opciones.MaximoIntentos, opciones.DuracionBloqueo);

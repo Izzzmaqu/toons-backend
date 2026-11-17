@@ -43,7 +43,7 @@ public sealed class AutenticacionServicePruebas : IDisposable
             Correo = Correo,
             ContrasenaHash = hasher.Cifrar(Contrasena),
             Rol = rol,
-            FechaRegistro = reloj.GetUtcNow(),
+            FechaRegistro = reloj.GetUtcNow().UtcDateTime,
         });
         contexto.SaveChanges();
     }

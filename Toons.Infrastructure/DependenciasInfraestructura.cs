@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Toons.Application.Autenticacion;
+using Toons.Application.Obras;
 using Toons.Infrastructure.Persistencia;
 using Toons.Infrastructure.Seguridad;
 
@@ -14,6 +15,7 @@ public static class DependenciasInfraestructura
             .UseNpgsql(cadenaConexion)
             .UseSnakeCaseNamingConvention());
         servicios.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
+        servicios.AddScoped<IObraRepositorio, ObraRepositorio>();
         servicios.AddScoped<SembradorDatos>();
         servicios.AddSingleton<IPasswordHasher, PasswordHasherAspNet>();
         servicios.AddSingleton<IGeneradorToken, GeneradorTokenJwt>();

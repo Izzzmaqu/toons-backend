@@ -5,7 +5,14 @@ El frontend vive en otro repositorio: `toons-web`.
 
 ## Requisitos
 
-- **SDK de .NET 10** (`global.json` fija la versión 10.0.100 y permite subir de versión de características). Compruébalo con `dotnet --version`.
+- **SDK de .NET 10** (`global.json` fija la versión 10.0.100 y permite subir de versión de características). Compruébalo con `dotnet --version`. Si no lo tienes, instálalo desde https://dotnet.microsoft.com/download/dotnet/10.0 o, sin tocar tu instalación, con el script oficial en una carpeta fuera del repositorio:
+
+  ```
+  Invoke-WebRequest https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1
+  .\dotnet-install.ps1 -Channel 10.0 -InstallDir C:\sdk-dotnet10
+  $env:PATH = "C:\sdk-dotnet10;$env:PATH"
+  ```
+
 - Docker (para PostgreSQL) o un PostgreSQL ya instalado.
 - `Toons.slnx` abre con Visual Studio 2022 17.13 o superior (o VS 2026) y con VS Code + C# Dev Kit. Si a alguien no le abre, `dotnet sln Toons.slnx migrate` genera un `.sln` clásico.
 
@@ -17,15 +24,15 @@ El frontend vive en otro repositorio: `toons-web`.
    docker compose up -d
    ```
 
-   Si ya tienes PostgreSQL instalado, crea una base `toons` y cambia la cadena de conexión `ConnectionStrings:Toons` en `Toons.Api/appsettings.Development.json` (o con la variable de entorno `ConnectionStrings__Toons`, ver `.env.example`).
+   **Con un PostgreSQL ya instalado** (sin Docker): crea una base `toons` y un usuario con permisos sobre ella, y cambia `ConnectionStrings:Toons` en `Toons.Api/appsettings.Development.json` (o con la variable de entorno `ConnectionStrings__Toons`, ver `.env.example`), por ejemplo `Host=localhost;Port=5432;Database=toons;Username=tu_usuario;Password=tu_clave`.
 
-2. Ejecuta la API (queda en http://localhost:5080). En Development crea las tablas y los datos de ejemplo al arrancar:
+2. Ejecuta la API (queda en http://localhost:5080). En Development aplica las migraciones y siembra los datos de ejemplo al arrancar:
 
    ```
    dotnet run --project Toons.Api
    ```
 
-3. Ejecuta las pruebas:
+3. Ejecuta las pruebas (no necesitan PostgreSQL: usan SQLite en memoria):
 
    ```
    dotnet test Toons.slnx
@@ -37,6 +44,7 @@ El frontend vive en otro repositorio: `toons-web`.
 |---|---|---|
 | admin@ejemplo.com | admin-ejemplo-123 | administrador |
 | usuario@ejemplo.com | usuario-ejemplo-123 | lector |
+| lucia@ejemplo.com, mateo@ejemplo.com, sofia@ejemplo.com | lector-ejemplo-123 | lector |
 
 ## Estructura
 
@@ -44,9 +52,10 @@ El frontend vive en otro repositorio: `toons-web`.
 Toons.slnx
 Toons.Domain          Entidades y reglas del dominio. No depende de nada.
 Toons.Application     Casos de uso (servicios), DTOs, validadores, interfaces y códigos de error. Solo depende de Domain.
-Toons.Infrastructure  EF Core, repositorios, hasher de contraseñas y generador de JWT. Depende de Application y Domain.
+Toons.Infrastructure  EF Core (contexto, configuraciones, migraciones), repositorios, hasher y generador de JWT. Depende de Application y Domain.
 Toons.Api             Controladores delgados y composición de dependencias. Compone todas las capas.
 Toons.Tests           Pruebas (xUnit, SQLite en memoria y pruebas de arquitectura con NetArchTest).
+docs/modelo-datos.md  Diagrama de las 12 tablas.
 ```
 
 La regla de dependencias la hacen cumplir las pruebas de `Toons.Tests/Arquitectura`.
@@ -61,3 +70,63 @@ El backend nunca devuelve mensajes de texto: solo códigos con el formato `modul
 - **Tiempo de respuesta:** para un correo inexistente se verifica la contraseña contra un hash ficticio, así el tiempo no delata si el correo existe.
 - **Intentos en paralelo (limitación conocida):** el contador se lee, se suma y se guarda en el mismo registro. Con muchas peticiones simultáneas contra la misma cuenta pueden perderse incrementos y permitirse algo más de 5 intentos. Un incremento atómico exigiría traducir las reglas del dominio a SQL, lo que se descartó por complejidad.
 - Los valores de `appsettings.Development.json` (`SOLO-DESARROLLO-CAMBIAR`) son ficticios y solo sirven en desarrollo. Fuera de Development la API no arranca si falta la clave JWT.
+
+## Para Persona 2: el modelo de datos
+
+El modelo (`docs/modelo-datos.md`) es una **propuesta de Persona 3, revisada por Persona 2, y se puede modificar**.
+
+**Cómo añadir o cambiar una entidad:**
+
+1. Crea o edita la clase en `Toons.Domain/Entidades/` (propiedades simples y de navegación; sin lógica de base de datos).
+2. Añade su `DbSet` en `Toons.Infrastructure/Persistencia/ToonsDbContext.cs`.
+3. Copia una configuración de `Toons.Infrastructure/Persistencia/Configuraciones/` (por ejemplo `CapituloConfiguracion.cs`) y adáptala: nombre de tabla, longitudes, únicos, claves foráneas y comportamiento al borrar (`Restrict` salvo tablas puente, páginas y capítulos). Se aplican solas.
+4. Crea la migración (la primera vez, `dotnet tool restore`):
+
+   ```
+   dotnet tool restore
+   dotnet tool run dotnet-ef migrations add NombreDeLaMigracion --project Toons.Infrastructure --startup-project Toons.Api
+   ```
+
+5. Arranca la API: en Development aplica la migración sola. Añade una prueba en `Toons.Tests/Modelo/`.
+
+**Reiniciar la base de desarrollo** (borra todo y vuelve a sembrar los datos de ejemplo):
+
+```
+docker compose down -v
+docker compose up -d
+dotnet run --project Toons.Api
+```
+
+## Para Persona 3: tablas y reportes
+
+Las tablas están descritas en `docs/modelo-datos.md`. Para consultarlas con `psql` dentro del contenedor de Docker:
+
+```
+docker compose exec postgres psql -U toons_dev -d toons
+```
+
+Dentro de `psql`: `\dt` lista las tablas, `\d obras` describe una tabla y `\q` sale. Ejemplos útiles para reportes:
+
+```sql
+SELECT date_trunc('month', fecha_lectura) AS mes, count(*) AS lecturas
+FROM lecturas GROUP BY mes ORDER BY mes;
+
+SELECT u.nombre AS creador, count(*) AS lecturas
+FROM lecturas l
+JOIN capitulos c ON c.id = l.capitulo_id
+JOIN obras o ON o.id = c.obra_id
+JOIN usuarios u ON u.id = o.creador_id
+GROUP BY u.nombre ORDER BY lecturas DESC;
+```
+
+**Cómo añadir un reporte a la API** (sigue el patrón de `Obras`):
+
+1. En `Toons.Application/Reportes/` crea el DTO del resultado, la interfaz `IReporteRepositorio` y un `ReportesService` con su interfaz.
+2. En `Toons.Infrastructure/Persistencia/` implementa `ReporteRepositorio` con consultas LINQ (`GroupBy`, `Count`, `Sum`).
+3. Regístralos en `DependenciasAplicacion.cs` y `DependenciasInfraestructura.cs`.
+4. Crea un `ReportesController` delgado en `Toons.Api/Controllers/` que solo llame al servicio.
+5. Escribe pruebas en `Toons.Tests/` usando `BaseSembrada` (base SQLite con los datos de ejemplo).
+
+## Obras
+
+`IObraRepositorio` se implementa con EF Core (`ObraRepositorio`). **Recientes** ordena por la fecha de publicación del último capítulo, **Tendencias** por la cantidad de lecturas de los últimos 30 días y la búsqueda ignora mayúsculas y minúsculas.

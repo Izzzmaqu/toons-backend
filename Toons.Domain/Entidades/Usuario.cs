@@ -9,15 +9,20 @@ public class Usuario
     public int RolId { get; set; }
     public Rol Rol { get; set; } = null!;
     public int IntentosFallidos { get; private set; }
-    public DateTimeOffset? BloqueadoHasta { get; private set; }
-    public DateTimeOffset FechaRegistro { get; set; }
+    public DateTime? BloqueadoHasta { get; private set; }
+    public DateTime FechaRegistro { get; set; }
+    public ICollection<Obra> ObrasCreadas { get; set; } = [];
+    public ICollection<Favorito> Favoritos { get; set; } = [];
+    public ICollection<Lectura> Lecturas { get; set; } = [];
+    public ICollection<Comentario> Comentarios { get; set; } = [];
+    public ICollection<Calificacion> Calificaciones { get; set; } = [];
 
-    public bool EstaBloqueado(DateTimeOffset ahora)
+    public bool EstaBloqueado(DateTime ahora)
     {
         return BloqueadoHasta > ahora;
     }
 
-    public void RegistrarIntentoFallido(DateTimeOffset ahora, int maximoIntentos, TimeSpan duracionBloqueo)
+    public void RegistrarIntentoFallido(DateTime ahora, int maximoIntentos, TimeSpan duracionBloqueo)
     {
         if (BloqueadoHasta <= ahora)
         {

@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Toons.Api.Errores;
@@ -72,7 +73,7 @@ public static class ComposicionApi
     {
         await using var alcance = aplicacion.Services.CreateAsyncScope();
         var contexto = alcance.ServiceProvider.GetRequiredService<ToonsDbContext>();
-        await contexto.Database.EnsureCreatedAsync();
+        await contexto.Database.MigrateAsync();
         await alcance.ServiceProvider.GetRequiredService<SembradorDatos>().SembrarAsync(CancellationToken.None);
     }
 }

@@ -6,7 +6,7 @@ public class UsuarioPruebas
 {
     private const int MaximoIntentos = 5;
     private static readonly TimeSpan DuracionBloqueo = TimeSpan.FromMinutes(5);
-    private static readonly DateTimeOffset Ahora = new(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
+    private static readonly DateTime Ahora = new(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
 
     private static Usuario CrearUsuario() => new()
     {
@@ -15,7 +15,7 @@ public class UsuarioPruebas
         ContrasenaHash = "hash",
     };
 
-    private static void FallarVeces(Usuario usuario, int veces, DateTimeOffset ahora)
+    private static void FallarVeces(Usuario usuario, int veces, DateTime ahora)
     {
         for (var i = 0; i < veces; i++)
         {
