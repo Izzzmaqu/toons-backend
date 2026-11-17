@@ -18,6 +18,7 @@ public sealed class AutenticacionServicePruebas : IDisposable
     private readonly BaseDatosSqlite baseDatos = new();
     private readonly FakeTimeProvider reloj = new(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
     private readonly ToonsDbContext contexto;
+    private readonly HasherEspia hasherEspia;
     private readonly AutenticacionService servicio;
 
     public AutenticacionServicePruebas()
@@ -25,10 +26,11 @@ public sealed class AutenticacionServicePruebas : IDisposable
         contexto = baseDatos.CrearContexto();
         var hasher = new PasswordHasherAspNet();
         SembrarUsuario(hasher);
+        hasherEspia = new HasherEspia(hasher);
         servicio = new AutenticacionService(
             new LoginSolicitudValidator(),
             new UsuarioRepositorio(contexto),
-            hasher,
+            hasherEspia,
             new GeneradorTokenFalso(),
             Options.Create(new BloqueoOptions()),
             reloj);
@@ -103,6 +105,32 @@ public sealed class AutenticacionServicePruebas : IDisposable
         var incorrecta = await Ingresar(Correo, ContrasenaIncorrecta);
 
         Assert.Equal(incorrecta.Error, inexistente.Error);
+    }
+
+    [Fact]
+    public async Task Usuario_inexistente_igual_gasta_una_verificacion_de_contrasena()
+    {
+        await Ingresar("nadie@ejemplo.com", Contrasena);
+
+        Assert.Equal(1, hasherEspia.Simulaciones);
+    }
+
+    [Fact]
+    public async Task Usuario_existente_no_dispara_la_verificacion_simulada()
+    {
+        await Ingresar(Correo, ContrasenaIncorrecta);
+
+        Assert.Equal(0, hasherEspia.Simulaciones);
+    }
+
+    [Fact]
+    public async Task Los_intentos_con_la_cuenta_bloqueada_no_suman_mas_fallos()
+    {
+        await FallarVeces(5);
+
+        await FallarVeces(3);
+
+        Assert.Equal(5, IntentosGuardados());
     }
 
     [Fact]
