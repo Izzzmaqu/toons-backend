@@ -109,7 +109,17 @@ La regla de dependencias la hacen cumplir las pruebas de `Toons.Tests/Arquitectu
 
 ## Errores por código
 
-El backend nunca devuelve mensajes de texto: solo códigos con el formato `modulo.caso` (ver `Toons.Application/Comun/CodigosError.cs`). La API responde `{ "codigo": "...", "campo": "..." }` con HTTP 400 (validación), 401 (credenciales inválidas), 423 (cuenta bloqueada) o 500 (error interno). El frontend traduce cada código a un mensaje en español.
+El backend nunca devuelve mensajes de texto: solo códigos con el formato `modulo.caso` (ver `Toons.Application/Comun/CodigosError.cs`). La API responde `{ "codigo": "...", "campo": "..." }` con HTTP 400 (validación), 401 (credenciales inválidas), 409 (correo ya registrado), 423 (cuenta bloqueada) o 500 (error interno). El frontend traduce cada código a un mensaje en español.
+
+## Registro
+
+`POST /api/autenticacion/registro` con `{ "nombre": "...", "correo": "...", "contrasena": "..." }` crea la cuenta y responde igual que el login (`{ token, nombre, rol }`), así el frontend puede entrar directo.
+
+- **Nombre:** obligatorio, máximo 60 caracteres (`registro.nombre_obligatorio`, `registro.nombre_largo`).
+- **Correo:** obligatorio y con formato válido (`auth.correo_obligatorio`, `auth.correo_invalido`). Se guarda en minúsculas; "ANA@x.com" y "ana@x.com" son el mismo correo.
+- **Contraseña:** obligatoria, mínimo 8 caracteres (`auth.contrasena_obligatoria`, `auth.contrasena_corta`).
+- **Correo repetido:** `registro.correo_en_uso` con HTTP 409. La detección final la hace el índice único de la base, así dos registros simultáneos con el mismo correo no pueden crear dos cuentas. Igual que en el bloqueo del login, esto revela que el correo ya existe; se acepta porque la persona necesita saber por qué no puede registrarse.
+- **Rol:** siempre `lector`. La solicitud no puede pedir otro rol; el rol `administrador` solo se asigna directamente en la base.
 
 ## Decisiones de seguridad del login
 
