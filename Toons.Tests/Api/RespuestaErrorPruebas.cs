@@ -13,6 +13,9 @@ public class RespuestaErrorPruebas
     [InlineData(CodigosError.CorreoInvalido, StatusCodes.Status400BadRequest)]
     [InlineData(CodigosError.ContrasenaObligatoria, StatusCodes.Status400BadRequest)]
     [InlineData(CodigosError.ContrasenaCorta, StatusCodes.Status400BadRequest)]
+    [InlineData(CodigosError.NombreObligatorio, StatusCodes.Status400BadRequest)]
+    [InlineData(CodigosError.NombreLargo, StatusCodes.Status400BadRequest)]
+    [InlineData(CodigosError.CorreoEnUso, StatusCodes.Status409Conflict)]
     [InlineData(CodigosError.SolicitudInvalida, StatusCodes.Status400BadRequest)]
     [InlineData(CodigosError.ErrorInterno, StatusCodes.Status500InternalServerError)]
     public void Cada_codigo_se_traduce_a_su_estado_http(string codigo, int estadoEsperado)
