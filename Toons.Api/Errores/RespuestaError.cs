@@ -17,6 +17,7 @@ public sealed record RespuestaError(string Codigo, string? Campo)
     {
         CodigosError.CredencialesInvalidas => StatusCodes.Status401Unauthorized,
         CodigosError.CuentaBloqueada => StatusCodes.Status423Locked,
+        CodigosError.CorreoEnUso => StatusCodes.Status409Conflict,
         CodigosError.ErrorInterno => StatusCodes.Status500InternalServerError,
         _ => StatusCodes.Status400BadRequest,
     };

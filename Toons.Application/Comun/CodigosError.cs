@@ -8,6 +8,9 @@ public static class CodigosError
     public const string ContrasenaCorta = "auth.contrasena_corta";
     public const string CredencialesInvalidas = "auth.credenciales_invalidas";
     public const string CuentaBloqueada = "auth.cuenta_bloqueada";
+    public const string NombreObligatorio = "registro.nombre_obligatorio";
+    public const string NombreLargo = "registro.nombre_largo";
+    public const string CorreoEnUso = "registro.correo_en_uso";
     public const string SolicitudInvalida = "comun.solicitud_invalida";
     public const string ErrorInterno = "comun.error_interno";
 }

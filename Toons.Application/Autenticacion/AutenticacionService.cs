@@ -18,8 +18,7 @@ public sealed class AutenticacionService(
         var validacion = await validador.ValidateAsync(solicitud, cancelacion);
         if (!validacion.IsValid)
         {
-            var primerError = validacion.Errors[0];
-            return Resultado<LoginRespuesta>.Fallo(primerError.ErrorCode, primerError.PropertyName.ToLowerInvariant());
+            return Resultado<LoginRespuesta>.Fallo(validacion.PrimerError());
         }
 
         var correo = solicitud.Correo.Trim().ToLowerInvariant();

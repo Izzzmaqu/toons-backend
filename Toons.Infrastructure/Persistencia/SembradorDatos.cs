@@ -43,8 +43,8 @@ public class SembradorDatos(ToonsDbContext contexto, IPasswordHasher hasher, Tim
 
     private List<Usuario> CrearUsuarios(DateTime ahora)
     {
-        var administrador = new Rol { Nombre = "administrador" };
-        var lector = new Rol { Nombre = "lector" };
+        var administrador = new Rol { Nombre = NombresDeRol.Administrador };
+        var lector = new Rol { Nombre = NombresDeRol.Lector };
         return
         [
             CrearUsuario("Admin de ejemplo", "admin@ejemplo.com", CatalogoDeEjemplo.ContrasenaAdministrador, administrador, ahora),

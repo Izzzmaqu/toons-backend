@@ -15,6 +15,7 @@ public static class DependenciasInfraestructura
             .UseNpgsql(cadenaConexion)
             .UseSnakeCaseNamingConvention());
         servicios.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
+        servicios.AddScoped<IRolRepositorio, RolRepositorio>();
         servicios.AddScoped<IObraRepositorio, ObraRepositorio>();
         servicios.AddScoped<SembradorDatos>();
         servicios.AddSingleton<IPasswordHasher, PasswordHasherAspNet>();

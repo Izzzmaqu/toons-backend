@@ -10,7 +10,9 @@ public static class DependenciasAplicacion
     public static IServiceCollection AgregarAplicacion(this IServiceCollection servicios)
     {
         servicios.AddScoped<IValidator<LoginSolicitud>, LoginSolicitudValidator>();
+        servicios.AddScoped<IValidator<RegistroSolicitud>, RegistroSolicitudValidator>();
         servicios.AddScoped<IAutenticacionService, AutenticacionService>();
+        servicios.AddScoped<IRegistroService, RegistroService>();
         servicios.AddScoped<IObrasService, ObrasService>();
         return servicios;
     }
